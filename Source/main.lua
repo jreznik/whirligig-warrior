@@ -65,11 +65,13 @@ end
 
 -- Assets
 local droneBodyImg = nil
-local enemyImg = nil
+local enemyImagetable = nil
 local groundImg = nil
 local cloudImg = nil
 
 function initAssets()
+    if droneBodyImg then return end -- Only init once
+
     droneBodyImg = gfx.image.new(30, 30)
     gfx.pushContext(droneBodyImg)
         gfx.setColor(gfx.kColorBlack); gfx.setLineWidth(2)
@@ -77,15 +79,30 @@ function initAssets()
         gfx.drawLine(8, 26, 6, 29); gfx.drawLine(22, 26, 24, 29)
     gfx.popContext()
 
-    enemyImg = gfx.image.new(16, 16)
-    gfx.pushContext(enemyImg)
+    -- UFO Imagetable (Animated Enemy)
+    enemyImagetable = gfx.imagetable.new(2, 20, 20)
+    
+    -- UFO Frame 1
+    local f1 = gfx.image.new(20, 20)
+    gfx.pushContext(f1)
         gfx.setColor(gfx.kColorBlack); gfx.setLineWidth(1)
-        gfx.drawCircleInRect(2, 2, 12, 12)
-        for i=0, 5 do
-            local a = math.rad(i * 60)
-            gfx.drawLine(8 + 6 * math.cos(a), 8 + 6 * math.sin(a), 8 + 10 * math.cos(a), 8 + 10 * math.sin(a))
-        end
+        gfx.drawEllipseInRect(6, 2, 8, 8) -- Dome
+        gfx.fillEllipseInRect(2, 7, 16, 8) -- Body
+        gfx.setColor(gfx.kColorWhite)
+        gfx.fillCircleAtPoint(5, 11, 1); gfx.fillCircleAtPoint(10, 12, 1); gfx.fillCircleAtPoint(15, 11, 1)
     gfx.popContext()
+    enemyImagetable:setImage(1, f1)
+    
+    -- UFO Frame 2
+    local f2 = gfx.image.new(20, 20)
+    gfx.pushContext(f2)
+        gfx.setColor(gfx.kColorBlack); gfx.setLineWidth(1)
+        gfx.drawEllipseInRect(6, 2, 8, 8) -- Dome
+        gfx.fillEllipseInRect(2, 7, 16, 8) -- Body
+        gfx.setColor(gfx.kColorWhite)
+        gfx.fillCircleAtPoint(7, 12, 1); gfx.fillCircleAtPoint(13, 12, 1)
+    gfx.popContext()
+    enemyImagetable:setImage(2, f2)
 
     groundImg = gfx.image.new(400, 20)
     gfx.pushContext(groundImg)
@@ -206,10 +223,26 @@ function Enemy:init()
     Enemy.super.init(self)
     self.xPos, self.yPos = math.random(15, 385), -30
     self.speed = math.random(15, 40) / 10 + (score / 350)
-    self:setImage(enemyImg); self:setZIndex(50); self:add(); self:setCollideRect(2, 2, 12, 12)
+    
+    -- Animation state
+    self.frame = 1
+    self.animDelay = math.random(8, 12)
+    self.animTimer = self.animDelay
+    
+    self:setImage(enemyImagetable:getImage(1))
+    self:setZIndex(50); self:add(); self:setCollideRect(2, 4, 16, 12)
 end
 function Enemy:update()
     self.yPos += self.speed; self:moveTo(self.xPos, self.yPos)
+    
+    -- Animate UFO
+    self.animTimer -= 1
+    if self.animTimer <= 0 then
+        self.frame = self.frame == 1 and 2 or 1
+        self:setImage(enemyImagetable:getImage(self.frame))
+        self.animTimer = self.animDelay
+    end
+    
     if self.yPos > 280 then self:remove() end
     if player then
         local overlaps = self:overlappingSprites()
