@@ -392,9 +392,10 @@ function BossHull:moduleDestroyed(m)
                 self:remove(); t:remove()
                 score += 500; showStatus("+500 VICTORY")
                 gameState = kStatePlaying; lastBossScore = score
-                spawnTimer = playdate.timer.new(1200, function() 
-                    local r = math.random(1, 10); if r == 1 then Carrier() elseif r <= 3 then for i=0, 4 do playdate.timer.performAfterDelay(i*300, function() Enemy("wave") end) end else Enemy() end
+                spawnTimer = playdate.timer.new(1500, function() 
+                    local r = math.random(1, 10); if r == 1 and score > 40 then Carrier() elseif r <= 3 and score > 20 then for i=0, 4 do playdate.timer.performAfterDelay(i*300, function() Enemy("wave") end) end else Enemy() end
                 end); spawnTimer.repeats = true
+
             end
         end).repeats = true
     end
@@ -442,7 +443,7 @@ function stopAllTimers()
 end
 
 function startCountdown()
-    stopAllTimers(); gfx.sprite.removeAll(); score = 0; lastBossScore = 0; bgX = 0; BackgroundSprite(); player = Player(); gameState = kStateCountdown; countdownMsg = "3"; statusMsg = ""; showCrankIndicator = false
+    stopAllTimers(); gfx.sprite.removeAll(); score = 0; lastBossScore = 0; bossEncounterCount = 0; bgX = 0; BackgroundSprite(); player = Player(); gameState = kStateCountdown; countdownMsg = "3"; statusMsg = ""; showCrankIndicator = false
     for i=1, 6 do Cloud() end
     playdate.timer.new(1000, function() countdownMsg = "2" end); playdate.timer.new(2000, function() countdownMsg = "1" end)
     countdownTimer = playdate.timer.new(3000, function() 
