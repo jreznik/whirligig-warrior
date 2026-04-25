@@ -261,7 +261,7 @@ end
 
 function drawTitle()
     gfx.clear(gfx.kColorWhite); gfx.setColor(gfx.kColorBlack)
-    gfx.drawTextAligned("*WHIRLIGIG WARRIOR V23*", 200, 80, kTextAlignment.center)
+    gfx.drawTextAligned("*WHIRLIGIG WARRIOR*", 200, 80, kTextAlignment.center)
     
     -- Manual drawing of Negative Circled A for "Press (A) to Start"
     local label = "Press        to Start"

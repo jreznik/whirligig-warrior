@@ -48,5 +48,5 @@ jobs:
     - name: Upload Build Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: WhirligigWarrior-v${{ github.run_number }}
+        name: WhirligigWarrior
         path: WhirligigWarrior.pdx
