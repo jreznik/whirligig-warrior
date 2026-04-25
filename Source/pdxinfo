@@ -3,6 +3,6 @@ author=Jaroslav "Rezza" Reznik
 description=A high-altitude rotor combat game for Playdate.
 bundleID=eu.rezza.whirligigwarrior
 version=1.0.0
-buildNumber=1
+buildNumber=2
 imagePath=images/card
 launchStep=1
