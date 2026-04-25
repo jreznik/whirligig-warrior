@@ -200,6 +200,7 @@ class('Player').extends(gfx.sprite)
 function Player:init()
     Player.super.init(self); self:setSize(44, 44); self:setZIndex(100); self:add(); self:setCollideRect(12, 19, 20, 15)
     self.xPos, self.yPos, self.vx, self.vy, self.rpm, self.angle, self.shieldTime, self.antigravTime = 200, kGroundY, 0, 0, 0, 0, 0, 0
+    self.flyingTime = 0
 end
 function Player:updateImage()
     local img = gfx.image.new(44, 44)
@@ -236,10 +237,25 @@ function Player:update()
         self.vy *= 0.94; self.vx *= 0.8; self.xPos += self.vx; self.yPos += self.vy
         if self.xPos < 22 then self.xPos = 22; self.vx = 0 end; if self.xPos > 378 then self.xPos = 378; self.vx = 0 end
         if self.yPos < 22 then self.yPos = 22; self.vy = 0.5 end 
+        
+        -- Scoring: 10 points for each 10 seconds flying
+        if self.yPos < kGroundY then
+            self.flyingTime += 0.033
+            if self.flyingTime >= 10 then
+                score += 10; self.flyingTime -= 10; showStatus("+10 FLIGHT")
+            end
+        end
+
         if self.yPos > kGroundY then 
             if self.shieldTime > 0 or self.antigravTime > 0 then self.yPos = kGroundY; self.vy = 0
             elseif self.vy > kSafeLandingSpeed then playSfx("die"); gameOver()
-            else if self.vy > 0.5 then playSfx("land") end; self.yPos = kGroundY; self.vy = 0 end
+            else 
+                if self.vy > 0.5 then 
+                    playSfx("land")
+                    if self.flyingTime > 0.5 then score += 20; showStatus("+20 LANDING") end
+                end
+                self.yPos = kGroundY; self.vy = 0; self.flyingTime = 0 
+            end
         end
     else self.yPos = kGroundY; self.vy = 0 end
     self:moveTo(self.xPos, self.yPos); self.angle += self.rpm * 6; self:updateImage()
@@ -261,7 +277,10 @@ function Enemy:update()
         local overlaps = self:overlappingSprites()
         for i=1, #overlaps do
             if overlaps[i] == player then
-                if player.shieldTime > 0 or (player.rpm > kLethalRPM and (self.yPos - player.yPos) < 2) then self:remove(); score += 10; playSfx("kill"); if player.shieldTime <= 0 then playdate.display.setOffset(math.random(-2,2), math.random(-2,2)) end
+                if player.shieldTime > 0 or (player.rpm > kLethalRPM and (self.yPos - player.yPos) < 2) then 
+                    self:remove(); score += 10; playSfx("kill"); 
+                    showStatus("+10 KILL")
+                    if player.shieldTime <= 0 then playdate.display.setOffset(math.random(-2,2), math.random(-2,2)) end
                 else playSfx("die"); gameOver() end
                 break
             end
@@ -315,6 +334,7 @@ end
 -- --- Game Loop ---
 function stopAllTimers()
     local all = playdate.timer.allTimers(); for _, t in ipairs(all) do t:remove() end
+    spawnTimer = nil; powerupTimer = nil; firstPowerupTimer = nil; antigravTimer = nil; firstAntigravTimer = nil; countdownTimer = nil
 end
 
 function startCountdown()
@@ -324,6 +344,7 @@ function startCountdown()
     countdownTimer = playdate.timer.new(3000, function() 
         countdownMsg = ""; showCrankIndicator = true; playdate.ui.crankIndicator:start(); gameState = kStatePlaying
         spawnTimer = playdate.timer.new(1500, function() Enemy() end); spawnTimer.repeats = true
+        
         firstAntigravTimer = playdate.timer.performAfterDelay(45000, function()
             local function spawnAntigrav()
                 local x = math.random(30, 370); local ind = Indicator(x, antigravIndicatorImg)
