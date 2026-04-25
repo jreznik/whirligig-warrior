@@ -1,0 +1,50 @@
+name: Build Playdate Game
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libpng-dev
+
+    - name: Download Playdate SDK
+      run: |
+        wget https://download.panic.com/playdate_sdk/Linux/PlaydateSDK-latest.tar.gz -O PlaydateSDK.tar.gz
+        mkdir -p $HOME/PlaydateSDK
+        tar -xzvf PlaydateSDK.tar.gz -C $HOME/PlaydateSDK --strip-components=1
+
+    - name: Run Build Script
+      run: |
+        export PLAYDATE_SDK_PATH=$HOME/PlaydateSDK
+        chmod +x build.sh
+        ./build.sh ${{ github.run_number }}
+
+    - name: Commit version bump
+      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      run: |
+        git config --global user.name "github-actions[bot]"
+        git config --global user.email "github-actions[bot]@users.noreply.github.com"
+        git add Source/pdxinfo
+        git commit -m "CI: bump buildNumber to ${{ github.run_number }}" || echo "No changes to commit"
+        git push origin main
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Upload Build Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: WhirligigWarrior-v${{ github.run_number }}
+        path: WhirligigWarrior.pdx

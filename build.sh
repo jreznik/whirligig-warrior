@@ -11,8 +11,13 @@ if [ ! -f "$PDXINFO" ]; then
 fi
 
 # Extract and increment buildNumber
-CURRENT_BUILD=$(grep "buildNumber=" "$PDXINFO" | cut -d'=' -f2)
-NEW_BUILD=$((CURRENT_BUILD + 1))
+if [ -n "$1" ]; then
+    NEW_BUILD=$1
+    CURRENT_BUILD=$(grep "buildNumber=" "$PDXINFO" | cut -d'=' -f2)
+else
+    CURRENT_BUILD=$(grep "buildNumber=" "$PDXINFO" | cut -d'=' -f2)
+    NEW_BUILD=$((CURRENT_BUILD + 1))
+fi
 
 # Update pdxinfo
 sed -i "s/buildNumber=$CURRENT_BUILD/buildNumber=$NEW_BUILD/" "$PDXINFO"
