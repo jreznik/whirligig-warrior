@@ -1,8 +1,8 @@
-name=Whirligig Warrior v2
-author=Gemini CLI
+name=Whirligig Warrior
+author=Jaroslav "Rezza" Reznik
 description=A high-altitude rotor combat game for Playdate.
-bundleID=com.geminicli.whirligigwarrior
-version=1.0
+bundleID=eu.rezza.whirligigwarrior
+version=1.0.0
 buildNumber=1
 imagePath=images/card
 launchStep=1
