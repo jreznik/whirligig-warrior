@@ -75,8 +75,22 @@ function initAssets()
     droneBodyImg = gfx.image.new(30, 30)
     gfx.pushContext(droneBodyImg)
         gfx.setColor(gfx.kColorBlack); gfx.setLineWidth(2)
-        gfx.drawRect(8, 16, 14, 10); gfx.fillRect(10, 18, 10, 6)
-        gfx.drawLine(8, 26, 6, 29); gfx.drawLine(22, 26, 24, 29)
+        -- Central Hull (Rounded Pod)
+        gfx.fillEllipseInRect(7, 15, 16, 10)
+        -- Structural Base
+        gfx.fillRect(10, 23, 10, 3)
+        -- Porthole / Lens (White)
+        gfx.setColor(gfx.kColorWhite)
+        gfx.fillCircleAtPoint(15, 20, 3)
+        gfx.setColor(gfx.kColorBlack)
+        gfx.fillCircleAtPoint(16, 19, 1) -- Pupil detail
+        -- Landing Legs (Reinforced look)
+        gfx.setLineWidth(2)
+        gfx.drawLine(9, 25, 6, 29)  -- Left
+        gfx.drawLine(21, 25, 24, 29) -- Right
+        -- Feet
+        gfx.drawLine(4, 29, 8, 29)
+        gfx.drawLine(22, 29, 26, 29)
     gfx.popContext()
 
     -- UFO Imagetable (Animated Enemy)
