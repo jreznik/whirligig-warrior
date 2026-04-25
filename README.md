@@ -12,7 +12,20 @@ In **Whirligig Warrior**, you take control of a clockwork drone in a high-stakes
 *   **Vertical Strategy:** Gain altitude by cranking forward. Juggle your lift to hover in the "kill zone" or drop quickly to avoid threats.
 *   **Blades as a Weapon:** Reach high RPM to turn your rotor into a lethal shredder. Intercept enemies with your spinning blades to destroy them, but protect the vulnerable body of your drone!
 *   **Safe Landings:** Gravity is always pulling. Descend slowly to land safely on the ground; free-falling without power will lead to a crash.
-*   **Procedural Action:** Enemies spawn with increasing density and speed as your score rises, ensuring every run is unique.
+*   **Procedural Action:** Enemies spawn with increasing density and speed as your score rises. As you progress, you will encounter:
+    *   **UFO Waves:** Synchronized formations moving in complex sine-wave patterns.
+    *   **Carrier Ships:** Massive, slow-moving vessels that deploy swarms of standard UFOs. Destroying them grants a large bonus.
+
+### The Dreadnought Boss
+
+Every **500 points**, a massive Mothership known as the **Dreadnought** will descend. 
+
+*   **Weak Points:** The ship is protected by lethal hull plating. You must precisely hit its glowing energy cores with your blades.
+*   **Progressive Difficulty:** The Dreadnought learns from your tactics:
+    *   **1st Encounter:** Only the central core must be destroyed.
+    *   **2nd Encounter:** Three cores must be neutralized.
+    *   **3rd+ Encounter:** All five cores must be shredded to claim victory.
+*   **Victory:** Defeating the Dreadnought awards a massive score bonus and triggers a victorious fanfare.
 
 ### Power-Ups
 
