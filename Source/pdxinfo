@@ -1,0 +1,8 @@
+name=Whirligig Warrior v2
+author=Gemini CLI
+description=A high-altitude rotor combat game for Playdate.
+bundleID=com.geminicli.whirligigwarrior
+version=1.0
+buildNumber=1
+imagePath=images/card
+launchStep=1
