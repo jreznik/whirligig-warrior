@@ -39,6 +39,13 @@ The game is built using the **Playdate SDK** and Lua. It features:
 *   Layered 1-bit graphics with a dedicated background sprite system.
 *   Persistent high-score tracking.
 
+### Versioning System
+
+Whirligig Warrior uses an automated versioning system based on the Git commit history:
+*   **buildNumber:** This value in `pdxinfo` is dynamically set during the build process using the total Git commit count (`git rev-list --count HEAD`).
+*   **Continuous Integration:** The project includes a GitHub Action that automatically compiles the game and generates versioned artifacts.
+*   **Build Script:** Use `./build.sh` to compile locally. The script will automatically handle the versioning injection without the need for manual file edits.
+
 ## License
 
 This project is open-source under the **MIT License**. See the `LICENSE` file for details.
