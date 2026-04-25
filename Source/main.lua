@@ -77,7 +77,7 @@ end
 local droneBodyImg = nil
 local enemyImagetable = nil
 local groundImg = nil
-local cloudImg = nil
+local cloudImages = {}
 local shieldImg = nil
 local antigravImg = nil
 local bubbleImg = nil
@@ -139,12 +139,29 @@ function initAssets()
         for i=0, 50 do local x = math.random(0, 399); local y = math.random(7, 18); gfx.drawLine(x, y, x + 1, y - 1) end
         gfx.setLineWidth(2); for i=0, 8 do local x = i * 50 + 10; gfx.drawLine(x, 5, x - 10, 20) end
     gfx.popContext()
-    cloudImg = gfx.image.new(50, 25)
-    gfx.pushContext(cloudImg)
+
+    -- Small Cloud
+    local c1 = gfx.image.new(40, 20)
+    gfx.pushContext(c1)
+        gfx.clear(gfx.kColorClear); gfx.setColor(gfx.kColorWhite); gfx.fillCircleAtPoint(20, 10, 7); gfx.fillCircleAtPoint(12, 12, 5); gfx.fillCircleAtPoint(28, 12, 5)
+        gfx.setColor(gfx.kColorBlack); gfx.setLineWidth(1); gfx.drawCircleAtPoint(20, 10, 7); gfx.drawCircleAtPoint(12, 12, 5); gfx.drawCircleAtPoint(28, 12, 5)
+        gfx.setColor(gfx.kColorWhite); gfx.fillCircleAtPoint(20, 10, 6); gfx.fillCircleAtPoint(12, 12, 4); gfx.fillCircleAtPoint(28, 12, 4)
+    gfx.popContext()
+    -- Medium Cloud
+    local c2 = gfx.image.new(50, 25)
+    gfx.pushContext(c2)
         gfx.clear(gfx.kColorClear); gfx.setColor(gfx.kColorWhite); gfx.fillCircleAtPoint(25, 12, 10); gfx.fillCircleAtPoint(15, 15, 8); gfx.fillCircleAtPoint(35, 15, 8)
         gfx.setColor(gfx.kColorBlack); gfx.setLineWidth(1); gfx.drawCircleAtPoint(25, 12, 10); gfx.drawCircleAtPoint(15, 15, 8); gfx.drawCircleAtPoint(35, 15, 8)
         gfx.setColor(gfx.kColorWhite); gfx.fillCircleAtPoint(25, 12, 9); gfx.fillCircleAtPoint(15, 15, 7); gfx.fillCircleAtPoint(35, 15, 7)
     gfx.popContext()
+    -- Large Cloud
+    local c3 = gfx.image.new(65, 30)
+    gfx.pushContext(c3)
+        gfx.clear(gfx.kColorClear); gfx.setColor(gfx.kColorWhite); gfx.fillCircleAtPoint(32, 12, 12); gfx.fillCircleAtPoint(20, 18, 10); gfx.fillCircleAtPoint(44, 18, 10); gfx.fillCircleAtPoint(32, 20, 8)
+        gfx.setColor(gfx.kColorBlack); gfx.setLineWidth(1); gfx.drawCircleAtPoint(32, 12, 12); gfx.drawCircleAtPoint(20, 18, 10); gfx.drawCircleAtPoint(44, 18, 10); gfx.drawCircleAtPoint(32, 20, 8)
+        gfx.setColor(gfx.kColorWhite); gfx.fillCircleAtPoint(32, 12, 11); gfx.fillCircleAtPoint(20, 18, 9); gfx.fillCircleAtPoint(44, 18, 9); gfx.fillCircleAtPoint(32, 20, 7)
+    gfx.popContext()
+    cloudImages = {c1, c2, c3}
 end
 initAssets()
 
@@ -155,9 +172,27 @@ function BackgroundSprite:init()
 end
 function BackgroundSprite:draw()
     gfx.setColor(gfx.kColorWhite); gfx.fillRect(0, 0, 400, 240)
-    for i=0, 3 do local cx = (i * 140 + bgX) % 480 - 50; local cy = (i * 40 + 30) % 180; cloudImg:draw(cx, cy) end
     gfx.setColor(gfx.kColorBlack); gfx.fillRect(0, 220, 400, 20); groundImg:draw(0, 220)
     gfx.setColor(gfx.kColorBlack); gfx.setLineWidth(2); gfx.drawLine(0, 225, 400, 225)
+end
+
+-- --- Cloud Sprite ---
+class('Cloud').extends(gfx.sprite)
+function Cloud:init()
+    Cloud.super.init(self)
+    self:setZIndex(-50); self:reset(true); self:add()
+end
+function Cloud:reset(randomX)
+    self.speed = math.random(3, 8) / 10
+    local x = randomX and math.random(-50, 400) or -70
+    self.xPos, self.yPos = x, math.random(20, 180)
+    self:setImage(cloudImages[math.random(1, #cloudImages)])
+    self:moveTo(self.xPos, self.yPos)
+end
+function Cloud:update()
+    self.xPos += self.speed
+    if self.xPos > 470 then self:reset(false) end
+    self:moveTo(self.xPos, self.yPos)
 end
 
 -- --- Player Class ---
@@ -180,9 +215,7 @@ function Player:updateImage()
         if self.antigravTime > 0 then
             local showAura = true; if self.antigravTime < 2 and (math.floor(playdate.getElapsedTime() * 15) % 2 == 0) then showAura = false end
             if showAura then
-                gfx.setColor(gfx.kColorBlack)
-                gfx.setLineWidth(2); gfx.drawRect(2, 2, 40, 40) -- Outer
-                gfx.setLineWidth(1); gfx.drawRect(6, 6, 32, 32) -- Inner
+                gfx.setColor(gfx.kColorBlack); gfx.setLineWidth(2); gfx.drawRect(2, 2, 40, 40); gfx.setLineWidth(1); gfx.drawRect(6, 6, 32, 32)
             end
         end
     gfx.popContext()
@@ -194,12 +227,10 @@ function Player:update()
     if self.shieldTime > 0 then self.shieldTime -= 0.033 end
     if self.antigravTime > 0 then self.antigravTime -= 0.033 end
     if gameState == kStatePlaying then
-        local lift = self.rpm * 0.45
-        if self.antigravTime <= 0 then self.vy += 0.4 end -- Apply gravity only if NO antigrav
-        self.vy -= lift * 0.1
+        local lift = self.rpm * 0.45; if self.antigravTime <= 0 then self.vy += 0.4 end; self.vy -= lift * 0.1
         if self.yPos < kGroundY or self.vy < 0 or self.antigravTime > 0 then
             if playdate.buttonIsPressed(playdate.kButtonDown) then self.vy += 1.2; if playdate.buttonJustPressed(playdate.kButtonDown) then playSfx("descend") end
-            elseif self.antigravTime > 0 and playdate.buttonIsPressed(playdate.kButtonUp) then self.vy -= 1.2 end -- Enable UP in antigrav
+            elseif self.antigravTime > 0 and playdate.buttonIsPressed(playdate.kButtonUp) then self.vy -= 1.2 end
             if playdate.buttonIsPressed(playdate.kButtonLeft) then self.vx -= 0.8 elseif playdate.buttonIsPressed(playdate.kButtonRight) then self.vx += 0.8 end
         end
         self.vy *= 0.94; self.vx *= 0.8; self.xPos += self.vx; self.yPos += self.vy
@@ -260,12 +291,7 @@ function ShieldPowerUp:update()
     if player then
         local overlaps = self:overlappingSprites()
         for i=1, #overlaps do
-            if overlaps[i] == player then 
-                player.shieldTime = kShieldDuration; 
-                playSfx("powerup"); 
-                showStatus("Shields: ON")
-                self:remove(); break 
-            end
+            if overlaps[i] == player then player.shieldTime = kShieldDuration; playSfx("powerup"); showStatus("Shields: ON"); self:remove(); break end
         end
     end
 end
@@ -281,12 +307,7 @@ function AntigravPowerUp:update()
     if player then
         local overlaps = self:overlappingSprites()
         for i=1, #overlaps do
-            if overlaps[i] == player then 
-                player.antigravTime = kAntigravDuration; 
-                playSfx("antigrav"); 
-                showStatus("Antigravity: ON")
-                self:remove(); break 
-            end
+            if overlaps[i] == player then player.antigravTime = kAntigravDuration; playSfx("antigrav"); showStatus("Antigravity: ON"); self:remove(); break end
         end
     end
 end
@@ -298,12 +319,11 @@ end
 
 function startCountdown()
     stopAllTimers(); gfx.sprite.removeAll(); score = 0; bgX = 0; BackgroundSprite(); player = Player(); gameState = kStateCountdown; countdownMsg = "3"; statusMsg = ""; showCrankIndicator = false
+    for i=1, 6 do Cloud() end
     playdate.timer.new(1000, function() countdownMsg = "2" end); playdate.timer.new(2000, function() countdownMsg = "1" end)
     countdownTimer = playdate.timer.new(3000, function() 
         countdownMsg = ""; showCrankIndicator = true; playdate.ui.crankIndicator:start(); gameState = kStatePlaying
         spawnTimer = playdate.timer.new(1500, function() Enemy() end); spawnTimer.repeats = true
-        
-        -- Rare Antigrav Cycle (First at 45s, then 60-90s)
         firstAntigravTimer = playdate.timer.performAfterDelay(45000, function()
             local function spawnAntigrav()
                 local x = math.random(30, 370); local ind = Indicator(x, antigravIndicatorImg)
@@ -312,8 +332,6 @@ function startCountdown()
             end
             spawnAntigrav()
         end)
-
-        -- Shield Cycle
         firstPowerupTimer = playdate.timer.performAfterDelay(25000, function()
             local function spawnShield()
                 local x = math.random(30, 370); local ind = Indicator(x, indicatorImg)
@@ -350,22 +368,12 @@ end
 function playdate.update()
     if gameState == kStateTitle then drawTitle(); if playdate.buttonJustPressed(playdate.kButtonA) then startCountdown() end
     elseif gameState == kStateCountdown or gameState == kStatePlaying then
-        bgX += 0.4; local ox, oy = playdate.display.getOffset()
-        if ox ~= 0 or oy ~= 0 then playdate.display.setOffset(0,0) end
+        local ox, oy = playdate.display.getOffset(); if ox ~= 0 or oy ~= 0 then playdate.display.setOffset(0,0) end
         gfx.sprite.update(); playdate.timer.updateTimers(); gfx.setColor(gfx.kColorBlack)
         gfx.drawText("SCORE: " .. score, 10, 10); gfx.drawRect(300, 22, 80, 8); gfx.fillRect(300, 22, (player.rpm / kMaxRPM) * 80, 8); gfx.drawLine(300 + (kLethalRPM / kMaxRPM) * 80, 20, 300 + (kLethalRPM / kMaxRPM) * 80, 32)
-        if countdownMsg ~= "" then
-            gfx.drawTextAligned("*" .. countdownMsg .. "*", 200, 100, kTextAlignment.center)
-        end
-
-        if statusMsg ~= "" then
-            gfx.drawTextAligned("*" .. statusMsg .. "*", 200, 160, kTextAlignment.center)
-        end
-
-        if showCrankIndicator then
-            playdate.ui.crankIndicator:update()
-        end
-
+        if countdownMsg ~= "" then gfx.drawTextAligned("*" .. countdownMsg .. "*", 200, 100, kTextAlignment.center) end
+        if statusMsg ~= "" then gfx.drawTextAligned("*" .. statusMsg .. "*", 200, 160, kTextAlignment.center) end
+        if showCrankIndicator then playdate.ui.crankIndicator:update() end
     elseif gameState == kStateGameOver then drawGameOver(); if playdate.buttonJustPressed(playdate.kButtonA) then startCountdown() end end
 end
 gfx.sprite.setAlwaysRedraw(true)
