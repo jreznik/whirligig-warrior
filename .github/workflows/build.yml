@@ -10,12 +10,12 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-
+    
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+      with:
+        fetch-depth: 0 # Required to accurately count commits
 
     - name: Install dependencies
       run: |
@@ -32,21 +32,10 @@ jobs:
       run: |
         export PLAYDATE_SDK_PATH=$HOME/PlaydateSDK
         chmod +x build.sh
-        ./build.sh ${{ github.run_number }}
-
-    - name: Commit version bump
-      if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-      run: |
-        git config --global user.name "github-actions[bot]"
-        git config --global user.email "github-actions[bot]@users.noreply.github.com"
-        git add Source/pdxinfo
-        git commit -m "CI: bump buildNumber to ${{ github.run_number }}" || echo "No changes to commit"
-        git push origin main
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        ./build.sh
 
     - name: Upload Build Artifact
       uses: actions/upload-artifact@v4
       with:
-        name: WhirligigWarrior-v${{ github.run_number }}
+        name: WhirligigWarrior-CI
         path: WhirligigWarrior.pdx

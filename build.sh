@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Whirligig Warrior Build Script
-# Increments buildNumber in pdxinfo and compiles the project.
+# Sets buildNumber in pdxinfo based on Git commit count and compiles the project.
 
 PDXINFO="Source/pdxinfo"
 
@@ -10,19 +10,21 @@ if [ ! -f "$PDXINFO" ]; then
     exit 1
 fi
 
-# Extract and increment buildNumber
-if [ -n "$1" ]; then
-    NEW_BUILD=$1
-    CURRENT_BUILD=$(grep "buildNumber=" "$PDXINFO" | cut -d'=' -f2)
+# Calculate buildNumber from Git commit count
+# If not in a git repo, defaults to 0
+if git rev-parse --is-inside-work-tree > /dev/null 2>&1; then
+    NEW_BUILD=$(git rev-list --count HEAD)
 else
-    CURRENT_BUILD=$(grep "buildNumber=" "$PDXINFO" | cut -d'=' -f2)
-    NEW_BUILD=$((CURRENT_BUILD + 1))
+    NEW_BUILD=0
 fi
 
-# Update pdxinfo
+# Extract current buildNumber from file
+CURRENT_BUILD=$(grep "buildNumber=" "$PDXINFO" | cut -d'=' -f2)
+
+# Update pdxinfo for the build
 sed -i "s/buildNumber=$CURRENT_BUILD/buildNumber=$NEW_BUILD/" "$PDXINFO"
 
-echo "Incremented buildNumber to $NEW_BUILD"
+echo "Build Number (Commit Count): $NEW_BUILD"
 
 # Compile the project
 if [ -z "$PLAYDATE_SDK_PATH" ]; then
