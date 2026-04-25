@@ -14,6 +14,13 @@ In **Whirligig Warrior**, you take control of a clockwork drone in a high-stakes
 *   **Safe Landings:** Gravity is always pulling. Descend slowly to land safely on the ground; free-falling without power will lead to a crash.
 *   **Procedural Action:** Enemies spawn with increasing density and speed as your score rises, ensuring every run is unique.
 
+### Power-Ups
+
+Once in a while, tactical power-ups will fall from the sky. Watch for the blinking indicators at the top of the screen!
+
+*   **Shield (S):** Grants **10 seconds of invincibility**. Protects against enemy collisions and high-speed ground crashes. The bubble will flash when the shield is about to expire.
+*   **Antigravity (A):** Disables gravity for **10 seconds**, allowing for weightless 8-way movement via the D-pad. Use this rare mode to dominate the screen without worrying about lift!
+
 ## Controls
 
 | Input | Action |
