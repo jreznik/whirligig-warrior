@@ -332,10 +332,10 @@ function drawTitle()
 end
 
 function drawGameOver()
-    gfx.setColor(gfx.kColorWhite); gfx.fillRect(50, 80, 300, 80)
-    gfx.setColor(gfx.kColorBlack); gfx.drawRect(50, 80, 300, 80)
-    gfx.drawTextAligned("GAME OVER", 200, 100, kTextAlignment.center)
-    gfx.drawTextAligned("Score: " .. score, 200, 120, kTextAlignment.center)
+    gfx.setColor(gfx.kColorWhite); gfx.fillRect(50, 70, 300, 100)
+    gfx.setColor(gfx.kColorBlack); gfx.drawRect(50, 70, 300, 100)
+    gfx.drawTextAligned("GAME OVER", 200, 85, kTextAlignment.center)
+    gfx.drawTextAligned("Score: " .. score, 200, 110, kTextAlignment.center)
     
     -- Manual drawing of Negative Circled A for "Press (A) to Restart"
     local label = "Press        to Restart"
