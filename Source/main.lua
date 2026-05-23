@@ -29,6 +29,10 @@ local gameState = kStateTitle
 local score = 0
 local lastBossScore = 0
 local highscore = 0
+local savedData = playdate.datastore.read("highscore.json")
+if savedData then
+    highscore = savedData.highscore or 0
+end
 local player = nil
 local spawnTimer = nil
 local powerupTimer = nil
@@ -43,6 +47,34 @@ local statusTimer = nil
 local showCrankIndicator = false
 local boss = nil
 local bossEncounterCount = 0
+local shakeDuration = 0
+local shakeIntensity = 0
+local lives = 3
+
+function shakeScreen(intensity, duration)
+    shakeIntensity = intensity
+    shakeDuration = duration
+end
+
+function loseLife()
+    if player.shieldTime > 0 then return end
+    
+    lives -= 1
+    playSfx("die")
+    shakeScreen(8, 12)
+    
+    if lives > 0 then
+        showStatus("DRONE LOST! RESPAWNING...")
+        player.xPos = 200
+        player.yPos = kGroundY
+        player.vx = 0
+        player.vy = 0
+        player.rpm = 0
+        player.shieldTime = 3.0
+    else
+        gameOver()
+    end
+end
 
 function showStatus(msg)
     statusMsg = msg
@@ -88,7 +120,6 @@ end
 -- Assets
 local droneBodyImg = nil
 local enemyImagetable = nil
-local groundImg = nil
 local cloudImages = {}
 local shieldImg = nil
 local antigravImg = nil
@@ -161,12 +192,6 @@ function initAssets()
     gfx.pushContext(antigravIndicatorImg)
         gfx.clear(gfx.kColorClear); gfx.setColor(gfx.kColorBlack); gfx.fillTriangle(10, 18, 2, 5, 18, 5); gfx.drawTextAligned("*A*", 10, -3, kTextAlignment.center)
     gfx.popContext()
-    groundImg = gfx.image.new(400, 20)
-    gfx.pushContext(groundImg)
-        gfx.clear(gfx.kColorClear); gfx.setColor(gfx.kColorBlack); gfx.fillRect(0, 5, 400, 15); gfx.setColor(gfx.kColorWhite); gfx.setLineWidth(1)
-        for i=0, 50 do local x = math.random(0, 399); local y = math.random(7, 18); gfx.drawLine(x, y, x + 1, y - 1) end
-        gfx.setLineWidth(2); for i=0, 8 do local x = i * 50 + 10; gfx.drawLine(x, 5, x - 10, 20) end
-    gfx.popContext()
     local c1 = gfx.image.new(40, 20); gfx.pushContext(c1); gfx.clear(gfx.kColorClear); gfx.setColor(gfx.kColorWhite); gfx.fillCircleAtPoint(20, 10, 7); gfx.fillCircleAtPoint(12, 12, 5); gfx.fillCircleAtPoint(28, 12, 5); gfx.setColor(gfx.kColorBlack); gfx.setLineWidth(1); gfx.drawCircleAtPoint(20, 10, 7); gfx.drawCircleAtPoint(12, 12, 5); gfx.drawCircleAtPoint(28, 12, 5); gfx.setColor(gfx.kColorWhite); gfx.fillCircleAtPoint(20, 10, 6); gfx.fillCircleAtPoint(12, 12, 4); gfx.fillCircleAtPoint(28, 12, 4); gfx.popContext()
     local c2 = gfx.image.new(50, 25); gfx.pushContext(c2); gfx.clear(gfx.kColorClear); gfx.setColor(gfx.kColorWhite); gfx.fillCircleAtPoint(25, 12, 10); gfx.fillCircleAtPoint(15, 15, 8); gfx.fillCircleAtPoint(35, 15, 8); gfx.setColor(gfx.kColorBlack); gfx.setLineWidth(1); gfx.drawCircleAtPoint(25, 12, 10); gfx.drawCircleAtPoint(15, 15, 8); gfx.drawCircleAtPoint(35, 15, 8); gfx.setColor(gfx.kColorWhite); gfx.fillCircleAtPoint(25, 12, 9); gfx.fillCircleAtPoint(15, 15, 7); gfx.fillCircleAtPoint(35, 15, 7); gfx.popContext()
     local c3 = gfx.image.new(65, 30); gfx.pushContext(c3); gfx.clear(gfx.kColorClear); gfx.setColor(gfx.kColorWhite); gfx.fillCircleAtPoint(32, 12, 12); gfx.fillCircleAtPoint(20, 18, 10); gfx.fillCircleAtPoint(44, 18, 10); gfx.fillCircleAtPoint(32, 20, 8); gfx.setColor(gfx.kColorBlack); gfx.setLineWidth(1); gfx.drawCircleAtPoint(32, 12, 12); gfx.drawCircleAtPoint(20, 18, 10); gfx.drawCircleAtPoint(44, 18, 10); gfx.drawCircleAtPoint(32, 20, 8); gfx.setColor(gfx.kColorWhite); gfx.fillCircleAtPoint(32, 12, 11); gfx.fillCircleAtPoint(20, 18, 9); gfx.fillCircleAtPoint(44, 18, 9); gfx.fillCircleAtPoint(32, 20, 7); gfx.popContext()
@@ -180,9 +205,27 @@ function BackgroundSprite:init()
     BackgroundSprite.super.init(self); self:setSize(400, 240); self:setZIndex(-100); self:setCenter(0, 0); self:moveTo(0, 0); self:add()
 end
 function BackgroundSprite:draw()
-    gfx.setColor(gfx.kColorWhite); gfx.fillRect(0, 0, 400, 240)
-    gfx.setColor(gfx.kColorBlack); gfx.fillRect(0, 220, 400, 20); groundImg:draw(0, 220)
-    gfx.setColor(gfx.kColorBlack); gfx.setLineWidth(2); gfx.drawLine(0, 225, 400, 225)
+    -- Draw sky background
+    gfx.setColor(gfx.kColorWhite)
+    gfx.fillRect(0, 0, 400, 220)
+    
+    -- Draw solid black ground block
+    gfx.setColor(gfx.kColorBlack)
+    gfx.fillRect(0, 220, 400, 20)
+    
+    -- Draw clean double curb separation lines (top line, then dashed white curb line)
+    gfx.setColor(gfx.kColorWhite)
+    gfx.setLineWidth(1)
+    
+    -- Sleek white dashed curb marking (4px dash, 4px gap) across the entire runway
+    for x = 0, 400, 8 do
+        gfx.drawLine(x, 222, x + 4, 222)
+    end
+    
+    -- Clean, perfectly-uniform diagonal hatch marks inside the black ground
+    for x = 0, 410, 16 do
+        gfx.drawLine(x, 226, x - 6, 232)
+    end
 end
 
 -- --- Cloud Sprite ---
@@ -213,12 +256,44 @@ function Player:updateImage()
         local bx = 22 + 14 * math.cos(math.rad(self.angle)); local by = 19 + 14 * math.sin(math.rad(self.angle))
         gfx.drawLine(22, 19, bx, by); gfx.drawLine(22, 19, 22 - (bx - 22), 19 - (by - 19)); gfx.fillCircleAtPoint(22, 19, 2)
         if self.shieldTime > 0 then
-            local showBubble = true; if self.shieldTime < 2 and (math.floor(playdate.getElapsedTime() * 15) % 2 == 0) then showBubble = false end
+            local showBubble = true
+            if self.shieldTime < 2.5 then
+                local timeLeft = self.shieldTime
+                local blinkPeriod = math.max(0.05, timeLeft * 0.15)
+                if (math.floor(playdate.getElapsedTime() / blinkPeriod) % 2 == 0) then
+                    showBubble = false
+                end
+            end
             if showBubble then bubbleImg:draw(0, 0) end
         end
         if self.antigravTime > 0 then
-            local showAura = true; if self.antigravTime < 2 and (math.floor(playdate.getElapsedTime() * 15) % 2 == 0) then showAura = false end
-            if showAura then gfx.setColor(gfx.kColorBlack); gfx.setLineWidth(2); gfx.drawRect(2, 2, 40, 40); gfx.setLineWidth(1); gfx.drawRect(6, 6, 32, 32) end
+            local showAura = true
+            if self.antigravTime < 2.5 then
+                local timeLeft = self.antigravTime
+                local blinkPeriod = math.max(0.05, timeLeft * 0.15)
+                if (math.floor(playdate.getElapsedTime() / blinkPeriod) % 2 == 0) then
+                    showAura = false
+                end
+            end
+            if showAura then
+                local angleOffset = playdate.getElapsedTime() * 100
+                gfx.setColor(gfx.kColorBlack)
+                gfx.setLineWidth(1)
+                local pts = {}
+                for idx = 0, 7 do
+                    local rad = math.rad(idx * 45 + angleOffset)
+                    table.insert(pts, 22 + 18 * math.cos(rad))
+                    table.insert(pts, 22 + 18 * math.sin(rad))
+                end
+                gfx.drawPolygon(table.unpack(pts))
+                local innerPts = {}
+                for idx = 0, 7 do
+                    local rad = math.rad(idx * 45 - angleOffset * 1.5)
+                    table.insert(innerPts, 22 + 14 * math.cos(rad))
+                    table.insert(innerPts, 22 + 14 * math.sin(rad))
+                end
+                gfx.drawPolygon(table.unpack(innerPts))
+            end
         end
     gfx.popContext()
     self:setImage(img)
@@ -228,6 +303,17 @@ function Player:update()
     updateEngineSound(self.rpm)
     if self.shieldTime > 0 then self.shieldTime -= 0.033 end
     if self.antigravTime > 0 then self.antigravTime -= 0.033 end
+    if (self.shieldTime > 0 and self.shieldTime < 2.5) or (self.antigravTime > 0 and self.antigravTime < 2.5) then
+        if not self.lastWarningTick then self.lastWarningTick = 0 end
+        self.lastWarningTick -= 1
+        if self.lastWarningTick <= 0 then
+            playSfx("warning")
+            local timeLeft = math.max(self.shieldTime, self.antigravTime)
+            self.lastWarningTick = math.max(4, math.floor(timeLeft * 8))
+        end
+    else
+        self.lastWarningTick = 0
+    end
     if gameState == kStatePlaying or gameState == kStateBoss then
         local lift = self.rpm * 0.45; if self.antigravTime <= 0 then self.vy += 0.4 end; self.vy -= lift * 0.1
         if self.yPos < kGroundY or self.vy < 0 or self.antigravTime > 0 then
@@ -241,9 +327,9 @@ function Player:update()
         if self.yPos < kGroundY then self.flyingTime += 0.033; if self.flyingTime >= 10 then score += 10; self.flyingTime -= 10; showStatus("+10 FLIGHT") end end
         if self.yPos > kGroundY then 
             if self.shieldTime > 0 or self.antigravTime > 0 then self.yPos = kGroundY; self.vy = 0
-            elseif self.vy > kSafeLandingSpeed then playSfx("die"); gameOver()
+            elseif self.vy > kSafeLandingSpeed then loseLife()
             else 
-                if self.vy > 0.5 then playSfx("land"); if self.flyingTime > 0.5 then score += 20; showStatus("+20 LANDING") end end
+                if self.vy > 0.5 then playSfx("land"); shakeScreen(1, 2); if self.flyingTime > 0.5 then score += 20; showStatus("+20 LANDING") end end
                 self.yPos = kGroundY; self.vy = 0; self.flyingTime = 0 
             end
         end
@@ -286,9 +372,9 @@ function Enemy:update()
             if overlaps[i] == player then
                 if player.shieldTime > 0 or (player.rpm > kLethalRPM and (self.yPos - player.yPos) < 2) then 
                     score += 10; playSfx("kill"); showStatus("+10 KILL")
-                    if player.shieldTime <= 0 then playdate.display.setOffset(math.random(-2,2), math.random(-2,2)) end
+                    if player.shieldTime <= 0 then shakeScreen(3, 4) end
                     self:destroy()
-                else playSfx("die"); gameOver() end
+                else loseLife() end
                 break
             end
         end
@@ -308,8 +394,10 @@ function Carrier:update()
         local overlaps = self:overlappingSprites()
         for i=1, #overlaps do
             if overlaps[i] == player then
-                if player.shieldTime > 0 or (player.rpm > kLethalRPM and (self.yPos - player.yPos) < 2) then self:remove(); score += 50; playSfx("kill"); showStatus("+50 CARRIER")
-                else playSfx("die"); gameOver() end
+                if player.shieldTime > 0 or (player.rpm > kLethalRPM and (self.yPos - player.yPos) < 2) then
+                    self:remove(); score += 50; playSfx("kill"); showStatus("+50 CARRIER")
+                    if player.shieldTime <= 0 then shakeScreen(5, 8) end
+                else loseLife() end
                 break
             end
         end
@@ -333,8 +421,8 @@ function BossModule:update()
                 if overlaps[i] == player then
                     if player.rpm > kLethalRPM then 
                         self.active = false; self:setCollideRect(0,0,0,0); self:setVisible(false)
-                        playSfx("boss_hit"); score += 100; showStatus("+100 CORE"); self.boss:moduleDestroyed(self)
-                    else playSfx("die"); gameOver() end
+                        playSfx("boss_hit"); shakeScreen(5, 8); score += 100; showStatus("+100 CORE"); self.boss:moduleDestroyed(self)
+                    else loseLife() end
                     break
                 end
             end
@@ -371,7 +459,7 @@ function BossHull:update()
     if player and gameState == kStateBoss then
         local overlaps = self:overlappingSprites()
         for i=1, #overlaps do
-            if overlaps[i] == player then if player.shieldTime <= 0 then playSfx("die"); gameOver() end; break end
+            if overlaps[i] == player then loseLife(); break end
         end
     end
 end
@@ -443,7 +531,7 @@ function stopAllTimers()
 end
 
 function startCountdown()
-    stopAllTimers(); gfx.sprite.removeAll(); score = 0; lastBossScore = 0; bossEncounterCount = 0; bgX = 0; BackgroundSprite(); player = Player(); gameState = kStateCountdown; countdownMsg = "3"; statusMsg = ""; showCrankIndicator = false
+    stopAllTimers(); gfx.sprite.removeAll(); score = 0; lives = 3; lastBossScore = 0; bossEncounterCount = 0; bgX = 0; BackgroundSprite(); player = Player(); gameState = kStateCountdown; countdownMsg = "3"; statusMsg = ""; showCrankIndicator = false
     for i=1, 6 do Cloud() end
     playdate.timer.new(1000, function() countdownMsg = "2" end); playdate.timer.new(2000, function() countdownMsg = "1" end)
     countdownTimer = playdate.timer.new(3000, function() 
@@ -477,11 +565,12 @@ end
 
 function gameOver()
     gameState = kStateGameOver; if score > highscore then highscore = score; playdate.datastore.write({highscore = highscore}, "highscore.json") end
-    stopAllTimers(); playdate.display.setOffset(0, 0); showCrankIndicator = false; if engineActive then motorSynth:stop(); engineActive = false end
+    stopAllTimers(); playdate.display.setOffset(0, 0); showCrankIndicator = false
 end
 
 function drawTitle()
     gfx.clear(gfx.kColorWhite); gfx.setColor(gfx.kColorBlack); gfx.drawTextAligned("*WHIRLIGIG WARRIOR*", 200, 80, kTextAlignment.center)
+    gfx.drawTextAligned("HIGH SCORE: " .. highscore, 200, 110, kTextAlignment.center)
     local label = "Press        to Start"; local lw, lh = gfx.getTextSize(label); local lx = 200 - lw/2; gfx.drawText(label, lx, 140)
     local cx = lx + gfx.getTextSize("Press    ") + 4; gfx.setColor(gfx.kColorBlack); gfx.fillCircleAtPoint(cx, 151, 11)
     gfx.setImageDrawMode(gfx.kDrawModeFillWhite); gfx.drawTextAligned("A", cx, 142, kTextAlignment.center); gfx.setImageDrawMode(gfx.kDrawModeCopy)
@@ -489,8 +578,9 @@ function drawTitle()
 end
 
 function drawGameOver()
-    gfx.setColor(gfx.kColorWhite); gfx.fillRect(50, 70, 300, 100); gfx.setColor(gfx.kColorBlack); gfx.drawRect(50, 70, 300, 100)
-    gfx.drawTextAligned("GAME OVER", 200, 85, kTextAlignment.center); gfx.drawTextAligned("Score: " .. score, 200, 110, kTextAlignment.center)
+    gfx.setColor(gfx.kColorWhite); gfx.fillRect(50, 65, 300, 110); gfx.setColor(gfx.kColorBlack); gfx.drawRect(50, 65, 300, 110)
+    gfx.drawTextAligned("GAME OVER", 200, 75, kTextAlignment.center)
+    gfx.drawTextAligned("Score: " .. score .. "  |  High Score: " .. highscore, 200, 105, kTextAlignment.center)
     local label = "Press        to Restart"; local lw, lh = gfx.getTextSize(label); local lx = 200 - lw/2; gfx.drawText(label, lx, 140)
     local cx = lx + gfx.getTextSize("Press    ") + 4; gfx.setColor(gfx.kColorBlack); gfx.fillCircleAtPoint(cx, 151, 11)
     gfx.setImageDrawMode(gfx.kDrawModeFillWhite); gfx.drawTextAligned("A", cx, 142, kTextAlignment.center); gfx.setImageDrawMode(gfx.kDrawModeCopy)
@@ -499,12 +589,100 @@ end
 function playdate.update()
     if gameState == kStateTitle then drawTitle(); if playdate.buttonJustPressed(playdate.kButtonA) then startCountdown() end
     elseif gameState == kStateCountdown or gameState == kStatePlaying or gameState == kStateBoss then
-        local ox, oy = playdate.display.getOffset(); if ox ~= 0 or oy ~= 0 then playdate.display.setOffset(0,0) end
+        if shakeDuration > 0 then
+            local dx = math.random(-shakeIntensity, shakeIntensity)
+            local dy = math.random(-shakeIntensity, shakeIntensity)
+            playdate.display.setOffset(dx, dy)
+            shakeDuration -= 1
+            if shakeDuration <= 0 then
+                playdate.display.setOffset(0, 0)
+            end
+        end
         if gameState == kStatePlaying and score >= lastBossScore + kBossScoreInterval then
             gameState = kStateBoss; if spawnTimer then spawnTimer:remove(); spawnTimer = nil end; showStatus("BOSS DETECTED!"); boss = BossHull()
         end
         gfx.sprite.update(); playdate.timer.updateTimers(); gfx.setColor(gfx.kColorBlack)
-        gfx.drawText("SCORE: " .. score, 10, 10); gfx.drawRect(300, 22, 80, 8); gfx.fillRect(300, 22, (player.rpm / kMaxRPM) * 80, 8); gfx.drawLine(300 + (kLethalRPM / kMaxRPM) * 80, 20, 300 + (kLethalRPM / kMaxRPM) * 80, 32)
+        local scoreStr = "*SCORE:* " .. score
+        gfx.drawText(scoreStr, 10, 10)
+        
+        local lw, lh = gfx.getTextSize(scoreStr)
+        local startX = 10 + lw + 12
+        local startY = 13
+        
+        for i = 1, 3 do
+            local hx = startX + (i - 1) * 16
+            if i <= lives then
+                -- Draw solid digital heart (11x9 pixels)
+                gfx.setColor(gfx.kColorBlack)
+                gfx.fillRect(hx + 1, startY, 3, 1)
+                gfx.fillRect(hx + 7, startY, 3, 1)
+                gfx.fillRect(hx, startY + 1, 5, 1)
+                gfx.fillRect(hx + 6, startY + 1, 5, 1)
+                gfx.fillRect(hx, startY + 2, 11, 2)
+                gfx.fillRect(hx + 1, startY + 4, 9, 1)
+                gfx.fillRect(hx + 2, startY + 5, 7, 1)
+                gfx.fillRect(hx + 3, startY + 6, 5, 1)
+                gfx.fillRect(hx + 4, startY + 7, 3, 1)
+                gfx.fillRect(hx + 5, startY + 8, 1, 1)
+            else
+                -- Draw hollow outline digital heart (11x9 pixels)
+                gfx.setColor(gfx.kColorBlack)
+                gfx.fillRect(hx + 1, startY, 3, 1)
+                gfx.fillRect(hx + 7, startY, 3, 1)
+                gfx.fillRect(hx, startY + 1, 1, 3)
+                gfx.fillRect(hx + 10, startY + 1, 1, 3)
+                gfx.fillRect(hx + 5, startY + 1, 1, 1)
+                gfx.fillRect(hx + 1, startY + 4, 1, 1)
+                gfx.fillRect(hx + 9, startY + 4, 1, 1)
+                gfx.fillRect(hx + 2, startY + 5, 1, 1)
+                gfx.fillRect(hx + 8, startY + 5, 1, 1)
+                gfx.fillRect(hx + 3, startY + 6, 1, 1)
+                gfx.fillRect(hx + 7, startY + 6, 1, 1)
+                gfx.fillRect(hx + 4, startY + 7, 1, 1)
+                gfx.fillRect(hx + 6, startY + 7, 1, 1)
+                gfx.fillRect(hx + 5, startY + 8, 1, 1)
+            end
+        end
+        
+        if player then
+            local gaugeX = 385
+            local gaugeY = 40
+            local gaugeW = 10
+            local gaugeH = 100
+            
+            -- Draw background and outline
+            gfx.setColor(gfx.kColorBlack)
+            gfx.drawRoundRect(gaugeX, gaugeY, gaugeW, gaugeH, 3)
+            gfx.fillRect(gaugeX + 3, gaugeY - 4, 4, 4) -- Battery cap
+            
+            -- If in killzone, draw solid black background for the top half (lethal chamber)
+            local isLethal = player.rpm > kLethalRPM
+            if isLethal then
+                gfx.fillRect(gaugeX, gaugeY, gaugeW, 50)
+            end
+            
+            -- Hazard Line at Lethal RPM (50% mark, segment 5)
+            gfx.setColor(gfx.kColorBlack)
+            local hazardY = gaugeY + gaugeH - 50
+            gfx.drawLine(gaugeX - 6, hazardY, gaugeX - 1, hazardY)
+            gfx.fillTriangle(gaugeX - 10, hazardY, gaugeX - 7, hazardY - 3, gaugeX - 7, hazardY + 3)
+            
+            -- Filled power blocks
+            local filledSegments = math.floor((player.rpm / kMaxRPM) * 10)
+            for i = 1, 10 do
+                if i <= filledSegments then
+                    local segY = gaugeY + gaugeH - i * 9 - 1
+                    -- If segment is in top half (i > 5) and we are lethal, draw in white (inverted)!
+                    if isLethal and i > 5 then
+                        gfx.setColor(gfx.kColorWhite)
+                    else
+                        gfx.setColor(gfx.kColorBlack)
+                    end
+                    gfx.fillRect(gaugeX + 2, segY, gaugeW - 4, 7)
+                end
+            end
+
+        end
         if countdownMsg ~= "" then gfx.drawTextAligned("*" .. countdownMsg .. "*", 200, 100, kTextAlignment.center) end
         if statusMsg ~= "" then gfx.drawTextAligned("*" .. statusMsg .. "*", 200, 160, kTextAlignment.center) end
         if showCrankIndicator then playdate.ui.crankIndicator:update() end
